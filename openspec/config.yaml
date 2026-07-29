@@ -1,0 +1,59 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Go 1.26.5 (module go-hadolint-poc), stdlib only, no deps yet.
+  Architecture: single-file main package (main.go), no layers/packages yet.
+  Testing: go test toolchain available; main_test.go has the repo's first test (TestGreeting).
+  Style: multi-stage Dockerfile (distroless nonroot), hadolint-clean, GH Actions CI
+    (go-build-test -> go-lint -> hadolint -> docker-build with smoke test + report-only Trivy scan).
+  Repo: git-initialized, 2 commits, no remote, golangci-lint + gofmt enforced in CI.
+
+strict_tdd: true
+
+testing:
+  runner: "go test ./..."
+  framework: "go test (stdlib testing package)"
+  layers:
+    unit: true          # go test, main_test.go has TestGreeting (table-driven)
+    integration: false   # no httptest/testcontainers usage detected
+    e2e: false           # docker smoke test in CI is a shell step, not a Go E2E harness
+  coverage:
+    available: true
+    command: "go test ./... -cover"
+  quality:
+    linter: true         # golangci-lint (pinned) + .golangci.yml, enforced in go-lint CI job
+    vet_command: "go vet ./..."
+    type_checker: false  # not applicable to Go
+    formatter: true       # gofmt -l check enforced (wrapped to fail on violations) in go-lint CI job
+  docker_lint:
+    tool: hadolint
+    status: "already fixed for existing Dockerfile per CI job"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Flag any change that adds a runtime dependency (currently stdlib-only)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Consider Go package/layer boundaries before introducing new packages
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Include a task to add the first *_test.go file if none exist for touched code
+  apply:
+    guidelines:
+      - Follow existing code patterns (single main package until a design decision splits it)
+      - Keep Dockerfile hadolint-clean
+    tdd: true
+    test_command: "go test ./..."
+  verify:
+    test_command: "go test ./..."
+    build_command: "go build ./... && go vet ./..."
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

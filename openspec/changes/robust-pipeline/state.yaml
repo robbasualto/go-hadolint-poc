@@ -1,0 +1,32 @@
+change: robust-pipeline
+created: 2026-07-29
+phases:
+  explore:
+    status: done
+    artifact: exploration.md
+  proposal:
+    status: pending
+  spec:
+    status: pending
+  design:
+    status: pending
+  tasks:
+    status: pending
+  apply:
+    status: pending
+  verify:
+    status: pending
+  archive:
+    status: pending
+session_preflight:
+  execution_mode: interactive
+  artifact_store: hybrid
+  delivery_strategy: ask-on-risk
+  review_budget_lines: 400
+notes: |
+  Engram is connected and working for this project (5 observations under
+  go-hadolint-poc as of 2026-07-29). The orchestrator itself has no direct
+  mem_* MCP tools (by design — sub-agents own Engram writes). The sdd-explore
+  sub-agent specifically did not receive mem_save in this run, so its
+  exploration was persisted via `engram save` CLI directly by the
+  orchestrator instead (obs #24, topic sdd/robust-pipeline/explore).
