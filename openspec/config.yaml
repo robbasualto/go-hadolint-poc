@@ -7,7 +7,8 @@ context: |
   Testing: go test toolchain available; main_test.go has the repo's first test (TestGreeting).
   Style: multi-stage Dockerfile (distroless nonroot), hadolint-clean, GH Actions CI
     (go-build-test -> go-lint -> hadolint -> docker-build with smoke test + report-only Trivy scan).
-  Repo: git-initialized, 2 commits, no remote, golangci-lint + gofmt enforced in CI.
+  Repo: git-initialized, remote https://github.com/robbasualto/go-hadolint-poc (public), default
+    branch master, golangci-lint + gofmt enforced in CI.
 
 strict_tdd: true
 
