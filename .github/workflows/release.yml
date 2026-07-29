@@ -25,7 +25,6 @@ jobs:
         uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: v2.12.2
-          config-path: .golangci.yml
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
