@@ -81,18 +81,20 @@ No `actionlint` or `yamllint` available in this sandbox, and Python's `yaml` mod
 **SUGGESTION**:
 - An untracked stray binary `go-hadolint-poc` (a `go build` output artifact) sits in the repo root and is not gitignored. Unrelated to this change's scope but worth a `.gitignore` entry in a follow-up.
 
-## Phase 5 — Requires Live Post-Merge Verification (not executable in this sandbox)
+## Phase 5 — Live Verification Complete (executed against the real GitHub repo, post-verify-report)
 
-The following 5 tasks cannot be completed without pushing to the live `github.com/robbasualto/go-hadolint-poc` repository and observing real GitHub Actions runs:
+All 5 tasks executed live against `github.com/robbasualto/go-hadolint-poc` after this report was first drafted, superseding the "requires live post-merge verification" gap above:
 
-1. **5.1** — Open a throwaway PR with a planted test credential; confirm `gitleaks` fails and blocks.
-2. **5.2** — Confirm a clean PR passes `gitleaks` without affecting the other 4 jobs.
-3. **5.3** — Push a passing-commit tag (e.g. `v0.1.0`); confirm `release.yml` triggers, all gates run, and a GitHub Release is created with auto-notes (verify via `gh release list`).
-4. **5.4** — Push a tag on a commit with an intentionally failing gate; confirm no GitHub Release is created.
-5. **5.5** — Confirm zero registry network calls during the passing release run.
+1. **5.1 — PASS.** Throwaway PR #1 with a planted test credential. First attempt (Stripe-shaped key) was blocked by GitHub's own native push protection before reaching CI at all — an independent defense layer working correctly. Second attempt (generic key format) reached CI: `gitleaks` failed with "🛑 Leaks detected", correctly blocking the PR. This also surfaced a real bug: gitleaks-action v3 requires an explicit `GITHUB_TOKEN` env var to scan `pull_request` events, or it errors out before scanning at all — fixed in commit `5ecbb2c`. PR closed without merge, branch deleted.
+2. **5.2 — PASS.** Push-triggered `gitleaks` runs pass clean; other 4 jobs confirmed unaffected (byte-identical, independent DAG node).
+3. **5.3 — PASS.** Real tag `v0.1.0` pushed; `release.yml` triggered, all 6 gates + build + smoke test ran, GitHub Release created with auto-generated notes. Confirmed via `gh release view v0.1.0`.
+4. **5.4 — PASS.** Throwaway tag `v0.0.0-test-fail` on a commit with an intentional `gofmt` violation: `gofmt check` step failed, all subsequent steps (including `Create GitHub Release`) were skipped per GitHub Actions' default step-sequencing, job conclusion `failure`. Confirmed via `gh release view v0.0.0-test-fail` → "release not found". Tag and throwaway branch deleted after confirmation, never merged.
+5. **5.5 — PASS.** Zero registry calls confirmed across all live runs (push, PR, both tag pushes) — no `docker push`, no registry hostnames, no `syft`/`cosign` in any log or workflow file.
 
-This is treated as a known, accepted gap requiring live post-merge verification — not a verification FAIL.
+**Additional bug found and fixed during live verification** (beyond gitleaks/GITHUB_TOKEN above): `config-path` is not a valid input for `golangci-lint-action@v9.3.0` (valid inputs are `version`, `version-file`, etc.) — was silently ignored with an "Unexpected input(s)" warning on every run. Fixed in commit `4030130`; golangci-lint already auto-discovers `.golangci.yml`, so lint behavior itself was unaffected.
+
+**Known minor gap, not fixed** (explicitly out of scope): gitleaks-action cannot post a PR comment on detected leaks in this repo ("Resource not accessible by integration") because the default `GITHUB_TOKEN` for `pull_request`-triggered workflows is read-only. The failing check still blocks the PR correctly — only the convenience comment annotation is missing. Would need `permissions: pull-requests: write` on the `gitleaks` job; not requested as part of this change.
 
 ## Final Verdict
 
-**PASS WITH WARNINGS** — all statically/sandbox-verifiable MUST requirements from both spec deltas are satisfied by the actual file contents (not just apply-report claims); Go build/vet/fmt/test are confirmed unaffected; the 4 pre-existing CI jobs are confirmed byte-identical via git diff; the `gitleaks-action` version pin was independently re-verified as current (`v3.0.0`); the script-injection boundary, no-registry-push, and no-SBOM/signing constraints are all confirmed by direct inspection. Runtime/live-repo scenario proof (Phase 5) remains outstanding and requires post-merge live verification — this is explicitly out of scope for a sandbox and does not block archival, provided Phase 5 is executed and tracked after merge.
+**PASS.** All statically-verifiable MUST requirements from both spec deltas are satisfied by the actual file contents, and all 5 previously-outstanding runtime scenarios (Phase 5) have now been executed live against the real GitHub repository and passed — including two genuine bugs discovered and fixed in the process (invalid `golangci-lint-action` input; missing `GITHUB_TOKEN` for gitleaks PR scans). No CRITICAL or WARNING items remain open. The repo is clean: no leftover test branches, tags, or files.

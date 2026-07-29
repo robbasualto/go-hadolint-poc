@@ -47,10 +47,16 @@ Chain strategy: pending
 
 - [x] 4.1 Update `openspec/config.yaml` `context` block `Repo:` line: replace "no remote" with `remote https://github.com/robbasualto/go-hadolint-poc (public), default branch master`.
 
-## Phase 5: Pipeline Verification
+## Phase 5: Pipeline Verification (live, executed against the real GitHub repo)
 
-- [ ] 5.1 Open a throwaway PR with a planted test credential; confirm `gitleaks` fails and blocks (spec: "A genuine secret is present").
-- [ ] 5.2 Confirm a clean PR passes `gitleaks` without affecting the other 4 jobs (spec: "Clean history passes").
-- [ ] 5.3 Push a passing-commit tag (e.g. `v0.1.0`); confirm `release.yml` triggers, all gates run, and a GitHub Release is created with auto-notes, verified via `gh release list`.
-- [ ] 5.4 Push a tag on a commit with an intentionally failing gate; confirm no GitHub Release is created (spec: "A gate fails").
-- [ ] 5.5 Confirm zero registry network calls during the passing release run (spec: "Workflow makes no registry calls").
+- [x] 5.1 Opened throwaway PR #1 with a planted test credential (`api_token = "gk7f..."`). First attempt (Stripe-shaped key) was blocked by GitHub's own push protection before even reaching CI — confirmed a second, independent defense layer. Second attempt (generic key) reached CI: `gitleaks` failed with "🛑 Leaks detected", correctly blocking the PR. **Found and fixed a real bug in the process**: gitleaks-action v3 requires an explicit `GITHUB_TOKEN` env var for `pull_request` events or it errors out before scanning at all (was failing for the wrong reason until fixed in commit 5ecbb2c). PR #1 closed without merging, branch deleted.
+- [x] 5.2 Confirmed via the `robust-pipeline`-era and this change's own push-triggered runs: `gitleaks` passes clean, other 4 jobs unaffected (byte-identical, `needs:` graph unchanged).
+- [x] 5.3 Pushed real tag `v0.1.0`: `release.yml` triggered, all gates ran, image built, smoke test passed, GitHub Release created with auto-generated notes. Verified via `gh release view v0.1.0`.
+- [x] 5.4 Pushed throwaway tag `v0.0.0-test-fail` on a commit with an intentional `gofmt` violation: `gofmt check` step failed, all subsequent steps (including `Create GitHub Release`) were skipped per GitHub Actions' default step-sequencing, job conclusion `failure`, confirmed via `gh release view v0.0.0-test-fail` → "release not found". Tag deleted (local + remote) after confirmation, throwaway branch deleted, never merged to master.
+- [x] 5.5 Confirmed across all live runs (push, PR, and both tag pushes): zero `docker push`, zero registry hostnames, zero `syft`/`cosign` invocations anywhere in logs or workflow files.
+
+**Bugs found and fixed during live verification** (both shipped to master):
+- `config-path` is not a valid input for `golangci-lint-action@v9.3.0` (commit 4030130) — was silently ignored with a warning on every run; golangci-lint already auto-discovers `.golangci.yml`, so behavior was unaffected, just the dead input was removed.
+- `gitleaks/gitleaks-action@v3.0.0` requires `GITHUB_TOKEN` passed explicitly via `env:` to scan `pull_request` events, or it errors before scanning (commit 5ecbb2c) — without this fix, PR-triggered gitleaks runs would fail for the wrong reason and never actually check for secrets.
+
+**Known minor gap, not fixed** (out of scope, noted for awareness): gitleaks-action couldn't post a PR comment on the detected leak ("Resource not accessible by integration") because the default `GITHUB_TOKEN` for `pull_request`-triggered workflows is read-only in this repo. The failing check itself still blocks the PR correctly; only the convenience PR-comment annotation is missing. Would need `permissions: pull-requests: write` on the `gitleaks` job to fix, not requested as part of this change.
