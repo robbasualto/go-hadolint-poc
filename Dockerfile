@@ -1,10 +1,18 @@
-FROM golang:latest
+FROM golang:1.26.5-bookworm AS build
 
-RUN apt-get update && apt-get install -y curl
-
-ADD . /app
 WORKDIR /app
+
+COPY go.mod ./
+COPY main.go ./
 
 RUN go build -o server main.go
 
-CMD go run main.go
+FROM gcr.io/distroless/base-debian12:nonroot
+
+WORKDIR /app
+
+COPY --from=build /app/server ./server
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["./server"]
