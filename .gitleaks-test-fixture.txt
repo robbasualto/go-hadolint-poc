@@ -1,0 +1,4 @@
+This is a throwaway file to verify the gitleaks CI gate blocks real-looking secrets.
+It will be removed before this branch is deleted; it is never merged to master.
+
+db_password = "Tr0ub4dor&3xamplePassw0rdNotReal2026"
