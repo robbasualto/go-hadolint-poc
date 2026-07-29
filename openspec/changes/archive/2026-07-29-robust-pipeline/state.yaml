@@ -5,19 +5,19 @@ phases:
     status: done
     artifact: exploration.md
   proposal:
-    status: pending
+    status: done
   spec:
-    status: pending
+    status: done
   design:
-    status: pending
+    status: done
   tasks:
-    status: pending
+    status: done
   apply:
-    status: pending
+    status: done
   verify:
-    status: pending
+    status: done
   archive:
-    status: pending
+    status: done
 session_preflight:
   execution_mode: interactive
   artifact_store: hybrid
