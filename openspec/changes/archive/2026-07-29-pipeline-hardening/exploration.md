@@ -50,7 +50,7 @@
 
 ## Recommendation
 
-Approach 1. Delivers exactly the 3 selected items, keeps a consistent zero-secrets/keyless-OIDC pattern across GHCR push + SBOM + signing, and treats release automation as automating the mechanical steps while keeping the human's version-bump decision. **One item needs explicit user sign-off before `sdd-propose` locks scope: accepting a GHCR registry push as a required prerequisite for SBOM+signing**, since it wasn't one of the 3 named items.
+Approach 1 was selected by the user. Delivers exactly the 3 selected items (secrets scanning, release automation), defers registry/SBOM/signing. Kept a consistent zero-secrets pattern, and treats release automation as automating the mechanical steps while keeping the human's version-bump decision.
 
 ## Risks
 
@@ -63,4 +63,4 @@ Approach 1. Delivers exactly the 3 selected items, keeps a consistent zero-secre
 
 ## Ready for Proposal
 
-Yes, pending the GHCR-push sign-off noted above.
+Yes. Approach 1 selected and implemented.
