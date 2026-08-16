@@ -1,0 +1,9 @@
+name: Test self-hosted runner
+
+on: workflow_dispatch
+
+jobs:
+  hello:
+    runs-on: lab-runner
+    steps:
+      - run: echo "corriendo en el runner self-hosted del lab"
