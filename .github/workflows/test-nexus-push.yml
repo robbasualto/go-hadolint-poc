@@ -8,8 +8,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          echo "::add-mask::$NEXUS_DEPLOYER_PASSWORD"
-          echo "$NEXUS_DEPLOYER_PASSWORD" | docker login "$NEXUS_REGISTRY_HOST" \
-            -u "$NEXUS_DEPLOYER_USERNAME" --password-stdin
+          echo "::add-mask::$NEXUS_DOCKER_PUSH_PASSWORD"
+          echo "$NEXUS_DOCKER_PUSH_PASSWORD" | docker login "$NEXUS_REGISTRY_HOST" \
+            -u "$NEXUS_DOCKER_PUSH_USERNAME" --password-stdin
           docker build -t "$NEXUS_REGISTRY_HOST/dind-smoke:$GITHUB_SHA" .
           docker push "$NEXUS_REGISTRY_HOST/dind-smoke:$GITHUB_SHA"
