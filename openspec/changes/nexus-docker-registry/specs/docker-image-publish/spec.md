@@ -8,23 +8,23 @@ Defines how go-hadolint-poc pipelines authenticate to the Nexus Docker registry,
 
 ### Requirement: Registry Authentication
 
-Every job that pushes an image MUST authenticate to the Nexus Docker registry via `docker login` using the `NEXUS_DEPLOYER_USERNAME` / `NEXUS_DEPLOYER_PASSWORD` GitHub Actions secrets before attempting a push; anonymous push MUST NOT be attempted.
+Every job that pushes an image MUST authenticate to the Nexus Docker registry via `docker login` using the `NEXUS_DOCKER_PUSH_USERNAME` / `NEXUS_DOCKER_PUSH_PASSWORD` environment variables (ambient on the `lab-runner` pod, provided by `lab-devops` via Vault/ESO — not GitHub Actions secrets) before attempting a push; anonymous push MUST NOT be attempted.
 
-#### Scenario: Login succeeds with valid deployer credentials
+#### Scenario: Login succeeds with valid push credentials
 
-- GIVEN the `NEXUS_DEPLOYER_USERNAME`/`NEXUS_DEPLOYER_PASSWORD` secrets are configured and valid
+- GIVEN the `NEXUS_DOCKER_PUSH_USERNAME`/`NEXUS_DOCKER_PUSH_PASSWORD` env vars are present and valid on the runner pod
 - WHEN a job runs `docker login` against the registry host before pushing
 - THEN the login MUST succeed and the subsequent push MUST proceed
 
 #### Scenario: Login fails with invalid or missing credentials
 
-- GIVEN the deployer secrets are missing, rotated, or invalid
+- GIVEN the credential env vars are unset, rotated, or invalid
 - WHEN the job attempts `docker login`
 - THEN the login step MUST fail non-zero and the job MUST stop before attempting a push
 
 ### Requirement: Registry-Qualified Image Naming
 
-Every pushed image reference MUST be qualified as `<minikube-ip>:30082/go-hadolint-poc:<tag>`, where the host is the Minikube IP resolved at job runtime (not hardcoded) and the port is the Docker connector NodePort.
+Every pushed image reference MUST be qualified as `$NEXUS_REGISTRY_HOST/go-hadolint-poc:<tag>` (currently `172.19.0.5:30083`, HTTPS), where the host comes from the ambient `NEXUS_REGISTRY_HOST` environment variable already present on the runner pod (not resolved or hardcoded by this workflow).
 
 #### Scenario: Tag on a release build
 
@@ -66,16 +66,16 @@ If the Nexus registry is unreachable at push time (network error, connector down
 
 ### Requirement: Self-Hosted Runner Execution
 
-Both `ci.yml` (`push` and `pull_request` triggers) and `release.yml` (`v*` tag trigger) jobs that build and push images MUST run on the self-hosted runner registered to this repository, co-located with the Minikube/Nexus host, rather than a GitHub-hosted runner.
+Both `ci.yml` (`push` and `pull_request` triggers) and `release.yml` (`v*` tag trigger) jobs that build and push images MUST run on the `lab-runner` self-hosted runner (ARC, `lab-devops`-managed) rather than a GitHub-hosted runner, so the runner pod has the registry host/credential environment variables and TLS trust already provisioned.
 
 #### Scenario: CI job runs on self-hosted runner
 
 - GIVEN a `push` or `pull_request` event triggers `ci.yml`
 - WHEN the `docker-build` job (or equivalent) executes
-- THEN it MUST run on `runs-on: self-hosted`, not a GitHub-hosted runner label
+- THEN it MUST run on `runs-on: lab-runner`, not a GitHub-hosted runner label
 
 #### Scenario: Release job runs on self-hosted runner
 
 - GIVEN a `v*` tag push triggers `release.yml`
 - WHEN the release job executes
-- THEN it MUST run on `runs-on: self-hosted`
+- THEN it MUST run on `runs-on: lab-runner`

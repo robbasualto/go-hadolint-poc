@@ -27,7 +27,7 @@ The release workflow MUST build the Docker image from the tagged commit AND run 
 
 ### Requirement: Registry Push on Release
 
-On all gates (build, vet, test, lint, format, hadolint, image build, smoke test) passing, the release workflow MUST authenticate to the Nexus Docker registry using the `NEXUS_DEPLOYER_USERNAME`/`NEXUS_DEPLOYER_PASSWORD` secrets and push the image tagged `<minikube-ip>:30082/go-hadolint-poc:<github.ref_name>` before creating the GitHub Release.
+On all gates (build, vet, test, lint, format, hadolint, image build, smoke test) passing, the release workflow MUST authenticate to the Nexus Docker registry using the `NEXUS_DOCKER_PUSH_USERNAME`/`NEXUS_DOCKER_PUSH_PASSWORD` environment variables (ambient on the `lab-runner` pod — not GitHub Actions secrets) and push the image tagged `$NEXUS_REGISTRY_HOST/go-hadolint-poc:<github.ref_name>` (currently `172.19.0.5:30083`, HTTPS) before creating the GitHub Release.
 (Previously: this behavior did not exist — the prior "No Registry Push" requirement forbade any registry push.)
 
 #### Scenario: Successful push before release
@@ -40,7 +40,7 @@ On all gates (build, vet, test, lint, format, hadolint, image build, smoke test)
 
 - GIVEN the release job is about to push
 - WHEN the push step executes
-- THEN it MUST have already authenticated via `docker login` with the deployer credentials; it MUST NOT attempt an anonymous push
+- THEN it MUST have already authenticated via `docker login` with the ambient push credentials; it MUST NOT attempt an anonymous push
 
 ## REMOVED Requirements
 
