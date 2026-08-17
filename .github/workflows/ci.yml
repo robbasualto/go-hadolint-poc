@@ -6,70 +6,69 @@ on:
 
 jobs:
   go-build-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.5"
-      - run: go build ./...
-      - run: go vet ./...
-      - run: go test ./... -cover
+    uses: robbasualto/pipelines/.github/workflows/go-build-test.yml@v1.0.1
+    with:
+      runner: lab-runner
 
   go-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.26.5"
-      - name: gofmt check
-        run: |
-          out=$(gofmt -l .)
-          [ -z "$out" ] || { echo "::error::unformatted: $out"; exit 1; }
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9.3.0
-        with:
-          version: v2.12.2
+    uses: robbasualto/pipelines/.github/workflows/go-lint.yml@v1.0.1
+    with:
+      runner: lab-runner
 
   hadolint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
+    uses: robbasualto/pipelines/.github/workflows/hadolint.yml@v1.0.1
+    with:
+      runner: lab-runner
+
+  gitleaks:
+    uses: robbasualto/pipelines/.github/workflows/gitleaks.yml@v1.0.1
+    with:
+      runner: lab-runner
 
   docker-build:
     needs: [go-build-test, go-lint, hadolint]
-    runs-on: ubuntu-latest
+    runs-on: lab-runner
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve image ref
+        run: |
+          if [ -z "$NEXUS_REGISTRY_HOST" ]; then
+            echo "::error::NEXUS_REGISTRY_HOST is not set on this runner"
+            exit 1
+          fi
+          echo "IMAGE=$NEXUS_REGISTRY_HOST/go-hadolint-poc:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Nexus login
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          echo "::add-mask::$NEXUS_DOCKER_PUSH_PASSWORD"
+          echo "$NEXUS_DOCKER_PUSH_PASSWORD" | docker login "$NEXUS_REGISTRY_HOST" \
+            -u "$NEXUS_DOCKER_PUSH_USERNAME" --password-stdin
+
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: false
-          tags: go-hadolint-poc:ci
+          tags: ${{ env.IMAGE }}
 
       - name: Smoke test container
         run: |
-          out=$(docker run --rm go-hadolint-poc:ci)
+          out=$(docker run --rm "$IMAGE")
           [ "$out" = "Hello, world!" ] || { echo "::error::unexpected output: $out"; exit 1; }
 
       - name: Trivy scan (report-only)
         uses: aquasecurity/trivy-action@v0.36.0
         continue-on-error: true
         with:
-          image-ref: "go-hadolint-poc:ci"
+          image-ref: "${{ env.IMAGE }}"
           format: table
           exit-code: "0"
 
-  gitleaks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push to Nexus
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: docker push "$IMAGE"
+
+      - name: Nexus logout
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: docker logout "$NEXUS_REGISTRY_HOST"
